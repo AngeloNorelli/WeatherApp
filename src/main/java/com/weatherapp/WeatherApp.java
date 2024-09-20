@@ -1,14 +1,13 @@
 package com.weatherapp;
 
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-
-import java.util.Scanner;
 
 public class WeatherApp extends Application {
 
@@ -23,6 +22,7 @@ public class WeatherApp extends Application {
         Label cityLabel = new Label("Enter City:");
         TextField cityTextField = new TextField();
         Button getWeatherButton = new Button("Get Weather");
+        Button switchModeButton = new Button("Dark Mode");
         Label weatherResultLabel = new Label();
 
         getWeatherButton.setOnAction(event -> {
@@ -38,10 +38,34 @@ public class WeatherApp extends Application {
             }
         });
 
-        VBox vbox = new VBox(10, cityLabel, cityTextField, getWeatherButton, weatherResultLabel);
-        vbox.setStyle("-fx-padding: 20; -fx-alignment: center;");
+        GridPane gridPane = new GridPane();
+        gridPane.setPadding(new Insets(20));
+        gridPane.setHgap(10);
+        gridPane.setVgap(10);
 
-        Scene scene = new Scene(vbox, 400, 300);
+        gridPane.add(cityLabel, 0, 0);
+        gridPane.add(cityTextField, 1, 0);
+        gridPane.add(switchModeButton, 2, 1);
+        gridPane.add(getWeatherButton, 1, 1);
+        gridPane.add(weatherResultLabel, 0, 2, 2, 1);
+
+
+
+        Scene scene = new Scene(gridPane, 400, 300);
+        scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
+
+        switchModeButton.setOnAction(event -> {
+            if(switchModeButton.getText().equals("Dark Mode")) {
+                scene.getStylesheets().clear();
+                scene.getStylesheets().add(getClass().getResource("/darkmode.css").toExternalForm());
+                switchModeButton.setText("Light Mode");
+            } else {
+                scene.getStylesheets().clear();
+                scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
+                switchModeButton.setText("Dark Mode");
+            }
+        });
+
         primaryStage.setTitle("Weather App");
         primaryStage.setScene(scene);
         primaryStage.show();

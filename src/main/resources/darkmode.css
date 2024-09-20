@@ -1,0 +1,41 @@
+.root {
+    -fx-background-color: #2b2b2b;
+    -fx-padding: 20;
+    -fx-font-family: 'Arial';
+}
+
+.label {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+}
+
+.button {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: #ffffff;
+    -fx-border-radius: 5;
+    -fx-font-size: 14px;
+    -fx-padding: 10;
+}
+
+.button:hover {
+    -fx-background-color: #1976D2;
+}
+
+.result-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: #00796B;
+    -fx-padding: 10;
+    -fx-background-color: #E0F2F1;
+    -fx-border-radius: 5;
+    -fx-border-color: #00796B;
+    -fx-border-width: 1;
+}
+
+.text-field {
+    -fx-text-fill: #ffffff;
+    -fx-background-color: #4B4A48;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 5;
+    -fx-padding: 5;
+    -fx-font-size: 14px;
+}
