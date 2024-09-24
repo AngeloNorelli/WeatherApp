@@ -4,65 +4,80 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
+import java.util.List;
 
 public class WeatherApp extends Application {
 
-    private WeatherService weatherService = new WeatherService();
+    private CountryCitiesService cityService = new CountryCitiesService();
+    private ImageView mapView;
 
     public static void main(String[] args) {
         launch(args);
     }
 
+    private void displayMapWithWeather(String countryName) throws Exception{
+        List<CityWeatherInfo> cityWeatherInfoList = CountryCitiesService.getCityWeatherInfo(countryName);
+
+        String mapImageUrl = cityService.getMapWithCities(cityWeatherInfoList);
+
+        Image mapImage = new Image(mapImageUrl);
+        mapView.setImage(mapImage);
+    }
+
     @Override
     public void start(Stage primaryStage) {
-        Label cityLabel = new Label("Enter City:");
-        TextField cityTextField = new TextField();
-        Button getWeatherButton = new Button("Get Weather");
-        Button switchModeButton = new Button("Dark Mode");
-        Label weatherResultLabel = new Label();
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(10));
+
+        HBox inputSection = new HBox(10);
+        Label countryLabel = new Label("Enter Country:");
+        TextField countryTextField = new TextField();
+        Button getWeatherButton = new Button("Check Weather");
+        CheckBox darkModeCheckBox = new CheckBox("Dark Mode");
+
+        inputSection.getChildren().addAll(countryLabel, countryTextField, getWeatherButton, darkModeCheckBox);
+
+        VBox mapSection = new VBox(10);
+        mapView = new ImageView();
+        mapView.setFitWidth(700);
+        mapView.setFitHeight(500);
+        mapSection.getChildren().add(mapView);
+
+        root.setTop(inputSection);
+        root.setCenter(mapSection);
+
+        Scene scene = new Scene(root, 800, 600);
+        scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
 
         getWeatherButton.setOnAction(event -> {
-            String cityName = cityTextField.getText();
-            if (!cityName.isEmpty()) {
+            String countryName = countryTextField.getText();
+            if (!countryName.isEmpty()) {
                 try {
-                    weatherService.getWeather(cityName, weatherResultLabel);
+                    displayMapWithWeather(countryName);
                 } catch (Exception e) {
-                    weatherResultLabel.setText("Error fetching weather: " + e.getMessage());
+                    throw new RuntimeException(e);
                 }
-            } else {
-                weatherResultLabel.setText("Please enter a city name.");
             }
         });
 
-        GridPane gridPane = new GridPane();
-        gridPane.setPadding(new Insets(20));
-        gridPane.setHgap(10);
-        gridPane.setVgap(10);
-
-        gridPane.add(cityLabel, 0, 0);
-        gridPane.add(cityTextField, 1, 0);
-        gridPane.add(switchModeButton, 2, 1);
-        gridPane.add(getWeatherButton, 1, 1);
-        gridPane.add(weatherResultLabel, 0, 2, 2, 1);
-
-
-
-        Scene scene = new Scene(gridPane, 400, 300);
-        scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
-
-        switchModeButton.setOnAction(event -> {
-            if(switchModeButton.getText().equals("Dark Mode")) {
+        darkModeCheckBox.setOnAction(event -> {
+            if(darkModeCheckBox.isSelected()) {
                 scene.getStylesheets().clear();
                 scene.getStylesheets().add(getClass().getResource("/darkmode.css").toExternalForm());
-                switchModeButton.setText("Light Mode");
             } else {
                 scene.getStylesheets().clear();
                 scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
-                switchModeButton.setText("Dark Mode");
+                darkModeCheckBox.setText("Dark Mode");
             }
         });
 

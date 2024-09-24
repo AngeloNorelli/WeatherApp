@@ -14,24 +14,24 @@ public class WeatherService {
     private static final String BASE_URL = "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current_weather=true";
     private static final String GEOCODING_URL = "https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=1";
 
-    public void getWeather(String latitude, String longitude, Label resultLabel) throws Exception {
-        String url = String.format(BASE_URL, latitude, longitude);
-        sendHttpRequest(url, resultLabel);
+    public static String getWeather(double latitude, double longitude) throws Exception {
+        String url = String.format(BASE_URL, String.valueOf(latitude), String.valueOf(longitude));
+        return sendHttpRequest(url);
     }
 
-    public void getWeather(String cityName, Label resultLabel) throws Exception {
+    public String getWeather(String cityName) throws Exception {
         String url = String.format(GEOCODING_URL, cityName.replace(" ", "+"));
-        sendHttpRequest(url, resultLabel);
+        return sendHttpRequest(url);
     }
 
-    private void sendHttpRequest(String urlString, Label resultLabel) throws Exception {
+    private static String sendHttpRequest(String urlString) throws Exception {
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("GET");
+        StringBuilder result = new StringBuilder();
 
         if(connection.getResponseCode() == 200) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            StringBuilder result = new StringBuilder();
             String line;
 
             while ((line = reader.readLine()) != null) {
@@ -40,48 +40,33 @@ public class WeatherService {
             reader.close();
 
             if(urlString.contains("current_weather")) {
-                parseWeatherData(result.toString(), resultLabel);
+                return result.toString();
             } else {
-                parseLocationData(result.toString(), resultLabel);
+                parseLocationData(result.toString());
             }
         } else {
-            Platform.runLater(() -> resultLabel.setText("Error fetching data. Please check your input."));
+            return null;
         }
-
         connection.disconnect();
+        return result.toString();
     }
 
-    private void parseLocationData(String json, Label resultLabel) throws Exception {
+    private static void parseLocationData(String json) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(json);
 
         if (root.isArray() && !root.isEmpty()) {
             JsonNode location = root.get(0);
-            String latitude = location.path("lat").asText();
-            String longitude = location.path("lon").asText();
+            double latitude = location.path("lat").asDouble();
+            double longitude = location.path("lon").asDouble();
 
-            getWeather(latitude, longitude, resultLabel);
+            getWeather(latitude, longitude);
         } else {
             System.out.println("City not found. Please try another city.");
         }
     }
 
-    private void parseWeatherData(String json, Label resultLabel) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(json);
-        JsonNode currentWeather = root.path("current_weather");
-
-        double temperature = currentWeather.path("temperature").asDouble();
-        double windSpeed = currentWeather.path("windspeed").asDouble();
-        String weatherDescription = getWeatherDescription(currentWeather.path("weathercode").asInt());
-
-        String weatherInfo = String.format("Current weather:\nTemperature: %.2f°C\nWind Speed: %.2f km/h\nWeather Description: %s\n",
-                temperature, windSpeed, weatherDescription);
-
-        Platform.runLater(() -> resultLabel.setText(weatherInfo));
-    }
-
-    private String getWeatherDescription(int weatherCode) {
+    public static String getWeatherDescription(int weatherCode) {
         switch(weatherCode) {
             case 0: return "Clear sky";
             case 1: return "Mainly clear";

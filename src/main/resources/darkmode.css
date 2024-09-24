@@ -39,3 +39,7 @@
     -fx-padding: 5;
     -fx-font-size: 14px;
 }
+
+.check-box {
+    -fx-text-fill: #ffffff;
+}
