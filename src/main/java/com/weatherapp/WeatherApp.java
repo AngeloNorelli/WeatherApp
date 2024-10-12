@@ -1,88 +1,138 @@
 package com.weatherapp;
 
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
+import org.jxmapviewer.JXMapViewer;
+import org.jxmapviewer.OSMTileFactoryInfo;
+import org.jxmapviewer.input.PanMouseInputListener;
+import org.jxmapviewer.input.ZoomMouseWheelListenerCursor;
+import org.jxmapviewer.viewer.GeoPosition;
+import org.jxmapviewer.viewer.TileFactoryInfo;
+import org.jxmapviewer.viewer.DefaultTileFactory;
 
+import javax.swing.*;
+import javax.swing.Timer;
+import javax.swing.event.MouseInputListener;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
+import java.util.*;
 import java.util.List;
 
-public class WeatherApp extends Application {
-
-    private CountryCitiesService cityService = new CountryCitiesService();
-    private ImageView mapView;
+public class WeatherApp {
+    private static JXMapViewer mapViewer;
+    private static WeatherService weatherService = new WeatherService();
 
     public static void main(String[] args) {
-        launch(args);
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("Interactive Weather Map");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(800, 600);
+
+            mapViewer = createMapViewer();
+            frame.add(mapViewer);
+
+            JPanel controlPanel = createControlPanel(frame);
+            frame.add(controlPanel, BorderLayout.NORTH);
+
+            frame.setVisible(true);
+        });
     }
 
-    private void displayMapWithWeather(String countryName) throws Exception{
-        List<CityWeatherInfo> cityWeatherInfoList = CountryCitiesService.getCityWeatherInfo(countryName);
+    private static JXMapViewer createMapViewer() {
+        TileFactoryInfo info = new OSMTileFactoryInfo();
+        DefaultTileFactory tileFactory = new DefaultTileFactory(info);
 
-        String mapImageUrl = cityService.getMapWithCities(cityWeatherInfoList);
+        JXMapViewer mapViewer = new JXMapViewer();
+        mapViewer.setTileFactory(tileFactory);
 
-        Image mapImage = new Image(mapImageUrl);
-        mapView.setImage(mapImage);
-    }
+        GeoPosition defaultCenter = new GeoPosition(52.23, 21.01);
+        mapViewer.setZoom(13);
+        mapViewer.setAddressLocation(defaultCenter);
 
-    @Override
-    public void start(Stage primaryStage) {
-        BorderPane root = new BorderPane();
-        root.setPadding(new Insets(10));
+        //MouseInputListener mm = new PanMouseInputListener(mapViewer);
+        //mapViewer.addMouseListener(mm);
+        //mapViewer.addMouseMotionListener(mm);
+        //mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
 
-        HBox inputSection = new HBox(10);
-        Label countryLabel = new Label("Enter Country:");
-        TextField countryTextField = new TextField();
-        Button getWeatherButton = new Button("Check Weather");
-        CheckBox darkModeCheckBox = new CheckBox("Dark Mode");
+        mapViewer.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                GeoPosition clickedPosition = mapViewer.convertPointToGeoPosition(e.getPoint());
 
-        inputSection.getChildren().addAll(countryLabel, countryTextField, getWeatherButton, darkModeCheckBox);
-
-        VBox mapSection = new VBox(10);
-        mapView = new ImageView();
-        mapView.setFitWidth(700);
-        mapView.setFitHeight(500);
-        mapSection.getChildren().add(mapView);
-
-        root.setTop(inputSection);
-        root.setCenter(mapSection);
-
-        Scene scene = new Scene(root, 800, 600);
-        scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
-
-        getWeatherButton.setOnAction(event -> {
-            String countryName = countryTextField.getText();
-            if (!countryName.isEmpty()) {
+                List<String> weatherInfo = null;
                 try {
-                    displayMapWithWeather(countryName);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    weatherInfo = weatherService.getWeatherForLocation(clickedPosition.getLatitude(), clickedPosition.getLongitude());
+                } catch (Exception ex) {
+                    throw new RuntimeException(ex);
                 }
+
+                addWeatherMarker(mapViewer, clickedPosition, weatherInfo);
             }
         });
 
-        darkModeCheckBox.setOnAction(event -> {
-            if(darkModeCheckBox.isSelected()) {
-                scene.getStylesheets().clear();
-                scene.getStylesheets().add(getClass().getResource("/darkmode.css").toExternalForm());
+        return mapViewer;
+    }
+
+    private static JPanel createControlPanel(JFrame frame) {
+        JPanel controlPanel = new JPanel();
+        controlPanel.setLayout(new FlowLayout());
+
+        JTextField countryField = new JTextField(20);
+        JButton fetchButton = new JButton("Fetch Weather");
+
+        controlPanel.add(new JLabel("Enter Country:"));
+        controlPanel.add(countryField);
+        controlPanel.add(fetchButton);
+
+        fetchButton.addActionListener(e -> {
+            String country = countryField.getText();
+            if (!country.isEmpty()) {
+                updateMapWithWeather(country);
             } else {
-                scene.getStylesheets().clear();
-                scene.getStylesheets().add(getClass().getResource("/default.css").toExternalForm());
-                darkModeCheckBox.setText("Dark Mode");
+                JOptionPane.showMessageDialog(frame, "Please enter a valid country name.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        primaryStage.setTitle("Weather App");
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        return controlPanel;
+    }
+
+    private static void updateMapWithWeather(String country) {
+        try {
+            String isoCode = CountryService.getISOCode(country);
+
+            GeoService geoService = new GeoService();
+            GeoPosition countryPosition = geoService.getCountryCoordinates(isoCode);
+
+            if (countryPosition != null) {
+                mapViewer.setAddressLocation(countryPosition);
+            } else {
+                JOptionPane.showMessageDialog(null, "Country coordinates not found.");
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error fetching data: " + ex.getMessage());
+        }
+    }
+
+    private static void addWeatherMarker(JXMapViewer mapViewer, GeoPosition position, List<String> weatherInfo) {
+        JWindow tooltip = new JWindow();
+        tooltip.setLayout(new BorderLayout());
+
+        String weatherText = String.join(", ", weatherInfo);
+        tooltip.add(new JLabel(weatherText), BorderLayout.CENTER);
+        tooltip.pack();
+
+        Point locationOnScreed = mapViewer.getLocationOnScreen();
+        tooltip.setLocation(locationOnScreed.x + 50, locationOnScreed.y + 50);
+        tooltip.setVisible(true);
+
+        new Timer(3000, e -> tooltip.setVisible(false)).start();
+    }
+
+    private static boolean isNearby(GeoPosition pos1, GeoPosition pos2, double tolerance) {
+        return Math.abs(pos1.getLatitude() - pos2.getLatitude()) < tolerance &&
+                Math.abs(pos1.getLongitude() - pos2.getLongitude()) < tolerance;
     }
 }
+
