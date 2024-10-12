@@ -49,24 +49,43 @@ public class WeatherApp {
         mapViewer.setZoom(13);
         mapViewer.setAddressLocation(defaultCenter);
 
-        //MouseInputListener mm = new PanMouseInputListener(mapViewer);
-        //mapViewer.addMouseListener(mm);
-        //mapViewer.addMouseMotionListener(mm);
-        //mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
+        final boolean[] isDragging = {false};
+        PanMouseInputListener panListener = new PanMouseInputListener(mapViewer);
+        mapViewer.addMouseListener(panListener);
+        mapViewer.addMouseMotionListener(panListener);
+        mapViewer.addMouseWheelListener(new ZoomMouseWheelListenerCursor(mapViewer));
 
         mapViewer.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                GeoPosition clickedPosition = mapViewer.convertPointToGeoPosition(e.getPoint());
-
-                List<String> weatherInfo = null;
-                try {
-                    weatherInfo = weatherService.getWeatherForLocation(clickedPosition.getLatitude(), clickedPosition.getLongitude());
-                } catch (Exception ex) {
-                    throw new RuntimeException(ex);
+            public void mousePressed(MouseEvent e) {
+                if(SwingUtilities.isLeftMouseButton(e)) {
+                    isDragging[0] = false;
                 }
+            }
 
-                addWeatherMarker(mapViewer, clickedPosition, weatherInfo);
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if(SwingUtilities.isLeftMouseButton(e) && !isDragging[0]) {
+                    GeoPosition clickedPosition = mapViewer.convertPointToGeoPosition(e.getPoint());
+
+                    List<String> weatherInfo = null;
+                    try {
+                        weatherInfo = weatherService.getWeatherForLocation(clickedPosition.getLatitude(), clickedPosition.getLongitude());
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+                    addWeatherMarker(mapViewer, clickedPosition, weatherInfo);
+                }
+            }
+        });
+
+        mapViewer.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if(SwingUtilities.isLeftMouseButton(e)) {
+                    isDragging[0] = true;
+                }
             }
         });
 
@@ -78,7 +97,7 @@ public class WeatherApp {
         controlPanel.setLayout(new FlowLayout());
 
         JTextField countryField = new JTextField(20);
-        JButton fetchButton = new JButton("Fetch Weather");
+        JButton fetchButton = new JButton("Move There");
 
         controlPanel.add(new JLabel("Enter Country:"));
         controlPanel.add(countryField);
